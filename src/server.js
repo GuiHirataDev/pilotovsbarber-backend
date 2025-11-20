@@ -1,11 +1,58 @@
-import { sql } from "./database.js";
+import { listarHorarios } from "./routes/listarHorarios.js";
+import { agendar } from "./routes/agendar.js";
 
 export default async function handler(req, res) {
-  try {
-    const result = await sql`SELECT version()`;
-    res.status(200).send("Conectado ao Neon! Versão: " + result[0].version);
-  } catch (erro) {
-    console.error("Erro ao conectar Neon:", erro);
-    res.status(500).send("Erro ao conectar base de dados.");
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const path = url.pathname;
+  const method = req.method;
+
+  // LISTAR HORÁRIOS
+  if (path === "/listar_horarios" && method === "GET") {
+    const date = url.searchParams.get("date");
+
+    if (!date) {
+      return res.status(400).json({ error: "Parâmetro date obrigatório" });
+    }
+
+    try {
+      const horarios = await listarHorarios(date);
+      return res.status(200).json(horarios);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno" });
+    }
   }
+
+  // AGENDAR
+  if (path === "/agendar" && method === "POST") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk.toString()));
+    req.on("end", async () => {
+      try {
+        const data = JSON.parse(body);
+        const { nome, telefone, date, horario } = data;
+
+        if (!nome || !date || !horario) {
+          return res
+            .status(400)
+            .json({ error: "Campos obrigatórios: nome, date, horario" });
+        }
+
+        const result = await agendar(nome, telefone, date, horario);
+
+        if (result.conflict) {
+          return res.status(409).json({ error: result.error });
+        }
+
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Erro no servidor" });
+      }
+    });
+    return;
+  }
+
+  // ROTA PADRÃO
+  return res.status(200).send("API PilotovsBarber Backend");
 }
