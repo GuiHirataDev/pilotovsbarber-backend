@@ -1,0 +1,8 @@
+{
+  "name": "pilotovsbarber-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.7.2"
+  }
+}
